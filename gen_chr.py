@@ -692,6 +692,147 @@ vs_tile = make_tile([
     '00100000',
     '00000000'])
 
+# ============================================================
+# CHARACTER CG TILES
+# ============================================================
+# Each character face is 3x3 tiles (24x24 pixels).
+# Colors: 0=bg(black), 1=dark(hair/outline), 2=medium(skin), 3=light(white)
+
+def make_tile_row(rows_24wide):
+    """Create 3 tiles from 8 rows of 24-pixel-wide data."""
+    tiles = []
+    for tx in range(3):
+        tile_rows = []
+        for row in rows_24wide:
+            tile_rows.append(row[tx*8:(tx+1)*8])
+        tiles.append(make_tile(tile_rows))
+    return tiles
+
+# --- Player Character (cute girl with dark hair) ---
+
+# Player top row (shared for all expressions): hair
+player_top = make_tile_row([
+    '000011111111111111110000',
+    '001111111111111111111100',
+    '011111111111111111111110',
+    '111111111111111111111111',
+    '111112222222222222111111',
+    '111122222222222222211111',
+    '111222222222222222221111',
+    '112222222222222222222111',
+])
+
+# Player happy eyes
+player_happy_eyes = make_tile_row([
+    '112222222222222222222111',
+    '112223330222203332222111',
+    '112223000222200032222111',
+    '112223330222203332222111',
+    '112222222222222222222111',
+    '012222222220222222222110',
+    '012222222222222222222110',
+    '002222222222222222222200',
+])
+
+# Player happy mouth
+player_happy_mouth = make_tile_row([
+    '001222222222222222222100',
+    '001222222000002222222100',
+    '000122222300032222221000',
+    '000012222222222222210000',
+    '000001222222222222100000',
+    '000000122222222221000000',
+    '000000011111111110000000',
+    '000000001111111100000000',
+])
+
+# Player sad eyes (half closed, downcast)
+player_sad_eyes = make_tile_row([
+    '112222222222222222222111',
+    '112222000222200022222111',
+    '112223332222233322222111',
+    '112223300222200322222111',
+    '112222222222222222222111',
+    '012222222222222222222110',
+    '012222222222222222222110',
+    '002222222222222222222200',
+])
+
+# Player sad mouth (frown)
+player_sad_mouth = make_tile_row([
+    '001222222222222222222100',
+    '001222222222222222222100',
+    '000122222300032222221000',
+    '000012222000002222210000',
+    '000001222222222222100000',
+    '000000122222222221000000',
+    '000000011111111110000000',
+    '000000001111111100000000',
+])
+
+# --- CPU Character (stern rival with angular features) ---
+
+# CPU top row (shared): helmet-like angular hair
+cpu_top = make_tile_row([
+    '011111111111111111111110',
+    '011111111111111111111110',
+    '011000000000000000000110',
+    '010222222222222222220110',
+    '002222222222222222222200',
+    '002222222222222222222200',
+    '002222222222222222222200',
+    '002222222222222222222200',
+])
+
+# CPU happy eyes (narrow, smirking)
+cpu_happy_eyes = make_tile_row([
+    '002222222222222222222200',
+    '002220333022203330222200',
+    '002220003022200030222200',
+    '002220333022203330222200',
+    '002222222222222222222200',
+    '002222222222222222222200',
+    '002222222222222222222200',
+    '002222222222222222222200',
+])
+
+# CPU happy mouth (smirk)
+cpu_happy_mouth = make_tile_row([
+    '002222222222222222222200',
+    '002222222222222222222200',
+    '002222200000000022222200',
+    '002222222000002222222200',
+    '000222222222222222222000',
+    '000012222222222222100000',
+    '000011111111111111100000',
+    '000000111111111100000000',
+])
+
+# CPU sad eyes (wide, shocked)
+cpu_sad_eyes = make_tile_row([
+    '002222222222222222222200',
+    '002220333022203330222200',
+    '002223003022230030222200',
+    '002223003022230030222200',
+    '002220333022203330222200',
+    '002222222222222222222200',
+    '002222222222222222222200',
+    '002222222222222222222200',
+])
+
+# CPU sad mouth (shocked O)
+cpu_sad_mouth = make_tile_row([
+    '002222222222222222222200',
+    '002222222200002222222200',
+    '002222222022202222222200',
+    '002222222022202222222200',
+    '000222222200002222220000',
+    '000012222222222222100000',
+    '000011111111111111100000',
+    '000000111111111100000000',
+])
+
+
 # --- Build CHR ROM ---
 def build_chr():
     tiles = bytearray()
@@ -765,6 +906,45 @@ def build_chr():
     tiles += corner_br    # $57
     tiles += star_tile    # $58
     tiles += vs_tile      # $59
+
+    # $5A-$5F: padding to reach $60
+    current_count = len(tiles) // 16
+    for _ in range(0x60 - current_count):
+        tiles += BLANK
+
+    # $60-$62: Player top row (shared)
+    for t in player_top:
+        tiles += t
+    # $63-$65: Player happy eyes
+    for t in player_happy_eyes:
+        tiles += t
+    # $66-$68: Player happy mouth
+    for t in player_happy_mouth:
+        tiles += t
+    # $69-$6B: Player sad eyes
+    for t in player_sad_eyes:
+        tiles += t
+    # $6C-$6E: Player sad mouth
+    for t in player_sad_mouth:
+        tiles += t
+    # $6F-$71: padding
+    for _ in range(3):
+        tiles += BLANK
+    # $72-$74: CPU top row (shared)
+    for t in cpu_top:
+        tiles += t
+    # $75-$77: CPU happy eyes
+    for t in cpu_happy_eyes:
+        tiles += t
+    # $78-$7A: CPU happy mouth
+    for t in cpu_happy_mouth:
+        tiles += t
+    # $7B-$7D: CPU sad eyes
+    for t in cpu_sad_eyes:
+        tiles += t
+    # $7E-$80: CPU sad mouth
+    for t in cpu_sad_mouth:
+        tiles += t
 
     # Pad rest of pattern table 0 to 256 tiles
     current_count = len(tiles) // 16

@@ -164,6 +164,39 @@ TILE_PAPER_TR = $49
 TILE_PAPER_BL = $4A
 TILE_PAPER_BR = $4B
 
+; Character CG tiles
+TILE_P_TOP0  = $60    ; player top-left
+TILE_P_TOP1  = $61
+TILE_P_TOP2  = $62
+TILE_P_HEYE0 = $63   ; player happy eyes
+TILE_P_HEYE1 = $64
+TILE_P_HEYE2 = $65
+TILE_P_HMTH0 = $66   ; player happy mouth
+TILE_P_HMTH1 = $67
+TILE_P_HMTH2 = $68
+TILE_P_SEYE0 = $69   ; player sad eyes
+TILE_P_SEYE1 = $6A
+TILE_P_SEYE2 = $6B
+TILE_P_SMTH0 = $6C   ; player sad mouth
+TILE_P_SMTH1 = $6D
+TILE_P_SMTH2 = $6E
+
+TILE_C_TOP0  = $72    ; CPU top-left
+TILE_C_TOP1  = $73
+TILE_C_TOP2  = $74
+TILE_C_HEYE0 = $75   ; CPU happy eyes
+TILE_C_HEYE1 = $76
+TILE_C_HEYE2 = $77
+TILE_C_HMTH0 = $78   ; CPU happy mouth
+TILE_C_HMTH1 = $79
+TILE_C_HMTH2 = $7A
+TILE_C_SEYE0 = $7B   ; CPU sad eyes
+TILE_C_SEYE1 = $7C
+TILE_C_SEYE2 = $7D
+TILE_C_SMTH0 = $7E   ; CPU sad mouth
+TILE_C_SMTH1 = $7F
+TILE_C_SMTH2 = $80
+
 TILE_HLINE_T = $50
 TILE_HLINE_B = $51
 TILE_VLINE_L = $52
@@ -415,10 +448,10 @@ main_loop:
 palette_data:
     ; BG Palette 0: general text (white on dark)
     .byte $0F, $30, $10, $00    ; black, white, gray, dark gray
-    ; BG Palette 1: player (warm)
-    .byte $0F, $27, $17, $30    ; black, orange, brown, white
-    ; BG Palette 2: CPU (cool)
-    .byte $0F, $12, $02, $30    ; black, blue, dark blue, white
+    ; BG Palette 1: player character (warm skin)
+    .byte $0F, $17, $36, $30    ; black, brown(hair), pale pink(skin), white(eyes)
+    ; BG Palette 2: CPU character (cool blue)
+    .byte $0F, $02, $12, $30    ; black, dark blue(hair), blue(skin), white(eyes)
     ; BG Palette 3: result/decoration
     .byte $0F, $1A, $2A, $38    ; black, green, light green, cream
     ; Sprite Palette 0: cursor
@@ -1306,18 +1339,162 @@ palette_data:
 .endproc
 
 ;; ============================================================
-;; REVEAL SCREEN - draw
+;; Draw a 3x3 tile face
+;; temp+0/+1 = pointer to 9-byte tile index table
+;; temp+2/+3 = PPU address (low/high)
+;; ============================================================
+.proc draw_face
+    ; Row 0 (tiles 0,1,2)
+    lda temp+3
+    sta PPUADDR
+    lda temp+2
+    sta PPUADDR
+    ldy #$00
+    lda (temp), y
+    sta PPUDATA
+    iny
+    lda (temp), y
+    sta PPUDATA
+    iny
+    lda (temp), y
+    sta PPUDATA
+
+    ; Advance to next nametable row (+32)
+    lda temp+2
+    clc
+    adc #$20
+    sta temp+2
+    lda temp+3
+    adc #$00
+    sta temp+3
+
+    ; Row 1 (tiles 3,4,5)
+    lda temp+3
+    sta PPUADDR
+    lda temp+2
+    sta PPUADDR
+    iny
+    lda (temp), y
+    sta PPUDATA
+    iny
+    lda (temp), y
+    sta PPUDATA
+    iny
+    lda (temp), y
+    sta PPUDATA
+
+    ; Advance to next row
+    lda temp+2
+    clc
+    adc #$20
+    sta temp+2
+    lda temp+3
+    adc #$00
+    sta temp+3
+
+    ; Row 2 (tiles 6,7,8)
+    lda temp+3
+    sta PPUADDR
+    lda temp+2
+    sta PPUADDR
+    iny
+    lda (temp), y
+    sta PPUDATA
+    iny
+    lda (temp), y
+    sta PPUDATA
+    iny
+    lda (temp), y
+    sta PPUDATA
+    rts
+.endproc
+
+;; Face tile lookup tables (9 tiles each: top/eyes/mouth rows)
+player_face_happy:
+    .byte TILE_P_TOP0, TILE_P_TOP1, TILE_P_TOP2
+    .byte TILE_P_HEYE0, TILE_P_HEYE1, TILE_P_HEYE2
+    .byte TILE_P_HMTH0, TILE_P_HMTH1, TILE_P_HMTH2
+player_face_sad:
+    .byte TILE_P_TOP0, TILE_P_TOP1, TILE_P_TOP2
+    .byte TILE_P_SEYE0, TILE_P_SEYE1, TILE_P_SEYE2
+    .byte TILE_P_SMTH0, TILE_P_SMTH1, TILE_P_SMTH2
+cpu_face_happy:
+    .byte TILE_C_TOP0, TILE_C_TOP1, TILE_C_TOP2
+    .byte TILE_C_HEYE0, TILE_C_HEYE1, TILE_C_HEYE2
+    .byte TILE_C_HMTH0, TILE_C_HMTH1, TILE_C_HMTH2
+cpu_face_sad:
+    .byte TILE_C_TOP0, TILE_C_TOP1, TILE_C_TOP2
+    .byte TILE_C_SEYE0, TILE_C_SEYE1, TILE_C_SEYE2
+    .byte TILE_C_SMTH0, TILE_C_SMTH1, TILE_C_SMTH2
+
+;; Attribute table for reveal screen (64 bytes)
+attr_reveal:
+    .byte $00,$55,$00,$00,$00,$00,$AA,$00  ; row 0 (tiles 0-3): labels
+    .byte $00,$55,$00,$00,$00,$00,$AA,$00  ; row 1 (tiles 4-7): faces
+    .byte $00,$55,$00,$00,$00,$00,$AA,$00  ; row 2 (tiles 8-11): hands+names
+    .byte $00,$00,$F0,$F0,$F0,$F0,$00,$00  ; row 3 (tiles 12-15): result text
+    .byte $00,$00,$00,$00,$00,$00,$00,$00  ; row 4 (tiles 16-19): score
+    .byte $00,$00,$00,$F0,$F0,$00,$00,$00  ; row 5 (tiles 20-23): PRESS A
+    .byte $00,$00,$00,$00,$00,$00,$00,$00  ; row 6
+    .byte $00,$00,$00,$00,$00,$00,$00,$00  ; row 7
+
+;; Lookup tables for hand tiles
+hand_tile_tl: .byte TILE_ROCK_TL, TILE_SCIS_TL, TILE_PAPER_TL
+hand_tile_tr: .byte TILE_ROCK_TR, TILE_SCIS_TR, TILE_PAPER_TR
+hand_tile_bl: .byte TILE_ROCK_BL, TILE_SCIS_BL, TILE_PAPER_BL
+hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
+
+;; ============================================================
+;; REVEAL SCREEN - draw (with character CG)
 ;; ============================================================
 .proc draw_reveal_screen
     lda #$00
     sta PPUMASK
-
     jsr clear_nametable
 
-    ; "YOU" at row 3, col 4
+    ; --- Determine result first (for face expressions) ---
+    lda player_choice
+    cmp cpu_choice
+    beq @is_draw
+    lda player_choice
+    cmp #$00
+    bne @chk1
+    lda cpu_choice
+    cmp #$01
+    beq @is_win
+    jmp @is_lose
+@chk1:
+    lda player_choice
+    cmp #$01
+    bne @chk2
+    lda cpu_choice
+    cmp #$02
+    beq @is_win
+    jmp @is_lose
+@chk2:
+    lda cpu_choice
+    cmp #$00
+    beq @is_win
+    jmp @is_lose
+@is_draw:
+    lda #$00
+    sta result
+    jmp @begin_draw
+@is_win:
+    lda #$01
+    sta result
+    inc player_score
+    jmp @begin_draw
+@is_lose:
+    lda #$02
+    sta result
+    inc cpu_score
+
+@begin_draw:
+    ; --- "YOU" at row 2, col 5 ---
     lda #$20
     sta PPUADDR
-    lda #$64
+    lda #$45
     sta PPUADDR
     lda #TILE_Y
     sta PPUDATA
@@ -1326,20 +1503,20 @@ palette_data:
     lda #TILE_U
     sta PPUDATA
 
-    ; "VS" at row 3, col 15
+    ; "VS" at row 2, col 15
     lda #$20
     sta PPUADDR
-    lda #$6F
+    lda #$4F
     sta PPUADDR
     lda #TILE_V
     sta PPUDATA
     lda #TILE_S
     sta PPUDATA
 
-    ; "CPU" at row 3, col 24
+    ; "CPU" at row 2, col 24
     lda #$20
     sta PPUADDR
-    lda #$78
+    lda #$58
     sta PPUADDR
     lda #TILE_C
     sta PPUDATA
@@ -1348,7 +1525,49 @@ palette_data:
     lda #TILE_U
     sta PPUDATA
 
-    ; Draw player's hand at row 8, col 4
+    ; --- Draw player face CG at row 4, col 4 ---
+    lda result
+    cmp #$02
+    beq @p_sad
+    lda #<player_face_happy
+    sta temp
+    lda #>player_face_happy
+    sta temp+1
+    jmp @do_p_face
+@p_sad:
+    lda #<player_face_sad
+    sta temp
+    lda #>player_face_sad
+    sta temp+1
+@do_p_face:
+    lda #$84              ; row 4, col 4
+    sta temp+2
+    lda #$20
+    sta temp+3
+    jsr draw_face
+
+    ; --- Draw CPU face CG at row 4, col 24 ---
+    lda result
+    cmp #$01
+    beq @c_sad
+    lda #<cpu_face_happy
+    sta temp
+    lda #>cpu_face_happy
+    sta temp+1
+    jmp @do_c_face
+@c_sad:
+    lda #<cpu_face_sad
+    sta temp
+    lda #>cpu_face_sad
+    sta temp+1
+@do_c_face:
+    lda #$98              ; row 4, col 24
+    sta temp+2
+    lda #$20
+    sta temp+3
+    jsr draw_face
+
+    ; --- Player hand at row 8, col 4 ---
     lda #$21
     sta PPUADDR
     lda #$04
@@ -1358,7 +1577,6 @@ palette_data:
     sta PPUDATA
     lda hand_tile_tr, x
     sta PPUDATA
-    ; Bottom row
     lda #$21
     sta PPUADDR
     lda #$24
@@ -1369,38 +1587,7 @@ palette_data:
     lda hand_tile_br, x
     sta PPUDATA
 
-    ; Draw player choice name below hand (row 11)
-    lda #$21
-    sta PPUADDR
-    lda #$63
-    sta PPUADDR
-    ldx player_choice
-    cpx #$00
-    beq @p_rock
-    cpx #$01
-    beq @p_scis
-    ; paper
-    lda #TILE_PA
-    sta PPUDATA
-    lda #TILE_CHOU
-    sta PPUDATA
-    jmp @draw_cpu
-@p_rock:
-    lda #TILE_GU
-    sta PPUDATA
-    lda #TILE_CHOU
-    sta PPUDATA
-    jmp @draw_cpu
-@p_scis:
-    lda #TILE_CHI
-    sta PPUDATA
-    lda #TILE_SYO
-    sta PPUDATA
-    lda #TILE_KI
-    sta PPUDATA
-
-@draw_cpu:
-    ; Draw CPU's hand at row 8, col 24
+    ; --- CPU hand at row 8, col 24 ---
     lda #$21
     sta PPUADDR
     lda #$18
@@ -1410,7 +1597,6 @@ palette_data:
     sta PPUDATA
     lda hand_tile_tr, x
     sta PPUDATA
-    ; Bottom row
     lda #$21
     sta PPUADDR
     lda #$38
@@ -1421,97 +1607,34 @@ palette_data:
     lda hand_tile_br, x
     sta PPUDATA
 
-    ; Draw CPU choice name (row 11)
+    ; --- Player choice name at row 11, col 4 ---
     lda #$21
     sta PPUADDR
-    lda #$77
+    lda #$64
     sta PPUADDR
-    ldx cpu_choice
-    cpx #$00
-    beq @c_rock
-    cpx #$01
-    beq @c_scis
-    ; paper
-    lda #TILE_PA
-    sta PPUDATA
-    lda #TILE_CHOU
-    sta PPUDATA
-    jmp @do_result
-@c_rock:
-    lda #TILE_GU
-    sta PPUDATA
-    lda #TILE_CHOU
-    sta PPUDATA
-    jmp @do_result
-@c_scis:
-    lda #TILE_CHI
-    sta PPUDATA
-    lda #TILE_SYO
-    sta PPUDATA
-    lda #TILE_KI
-    sta PPUDATA
+    jsr write_player_name
 
-@do_result:
-    ; --- Determine result ---
-    ; Rock(0) beats Scissors(1), Scissors(1) beats Paper(2), Paper(2) beats Rock(0)
-    lda player_choice
-    cmp cpu_choice
-    beq @draw_result       ; draw: same choice
+    ; --- CPU choice name at row 11, col 24 ---
+    lda #$21
+    sta PPUADDR
+    lda #$78
+    sta PPUADDR
+    jsr write_cpu_name
 
-    ; Check if player wins
-    ; Win conditions: (P=0,C=1), (P=1,C=2), (P=2,C=0)
-    lda player_choice
-    cmp #$00
-    bne @chk1
-    lda cpu_choice
-    cmp #$01
-    beq @win
-    jmp @lose
-@chk1:
-    lda player_choice
-    cmp #$01
-    bne @chk2
-    lda cpu_choice
-    cmp #$02
-    beq @win
-    jmp @lose
-@chk2:
-    ; player = 2
-    lda cpu_choice
-    cmp #$00
-    beq @win
-    jmp @lose
-
-@draw_result:
-    lda #$00
-    sta result
-    jmp @show_result
-@win:
-    lda #$01
-    sta result
-    inc player_score
-    jmp @show_result
-@lose:
-    lda #$02
-    sta result
-    inc cpu_score
-
-@show_result:
-    ; Display result text at row 16, centered
+    ; --- Result text at row 14 ---
     lda result
     cmp #$00
-    bne @not_draw
-    jmp @show_draw
-@not_draw:
+    bne @not_draw_txt
+    jmp @txt_draw
+@not_draw_txt:
     cmp #$01
-    bne @not_win
-    jmp @show_win
-@not_win:
-
-    ; LOSE: "YOU LOSE..."
-    lda #$22
+    bne @txt_lose
+    jmp @txt_win
+@txt_lose:
+    ; "YOU LOSE..." at row 14, col 10
+    lda #$21
     sta PPUADDR
-    lda #$0A            ; row 16, col 10
+    lda #$CA
     sta PPUADDR
     lda #TILE_Y
     sta PPUDATA
@@ -1537,13 +1660,13 @@ palette_data:
     sta PPUDATA
     lda #$03
     jsr play_sfx
-    jmp @show_score
+    jmp @draw_score
 
-@show_win:
-    ; "YOU WIN!"
-    lda #$22
+@txt_win:
+    ; "YOU WIN!" at row 14, col 11
+    lda #$21
     sta PPUADDR
-    lda #$0B            ; row 16, col 11
+    lda #$CB
     sta PPUADDR
     lda #TILE_Y
     sta PPUDATA
@@ -1563,13 +1686,13 @@ palette_data:
     sta PPUDATA
     lda #$02
     jsr play_sfx
-    jmp @show_score
+    jmp @draw_score
 
-@show_draw:
-    ; "DRAW"
-    lda #$22
+@txt_draw:
+    ; "DRAW" at row 14, col 13
+    lda #$21
     sta PPUADDR
-    lda #$0D            ; row 16, col 13
+    lda #$CD
     sta PPUADDR
     lda #TILE_D
     sta PPUDATA
@@ -1582,11 +1705,11 @@ palette_data:
     lda #$04
     jsr play_sfx
 
-@show_score:
-    ; Score at row 20: "P:X  VS  C:X"
+@draw_score:
+    ; Score at row 17, col 8
     lda #$22
     sta PPUADDR
-    lda #$87
+    lda #$28
     sta PPUADDR
     lda #TILE_P
     sta PPUDATA
@@ -1615,10 +1738,10 @@ palette_data:
     adc #TILE_0
     sta PPUDATA
 
-    ; "PRESS A" at row 24
-    lda #$23
+    ; "PRESS A" at row 22, col 12
+    lda #$22
     sta PPUADDR
-    lda #$0B
+    lda #$CC
     sta PPUADDR
     lda #TILE_P
     sta PPUDATA
@@ -1635,62 +1758,20 @@ palette_data:
     lda #TILE_A
     sta PPUDATA
 
-    ; --- Set attributes ---
+    ; --- Set attributes from table ---
     lda #$23
     sta PPUADDR
     lda #$C0
     sta PPUADDR
-    ; Row 0-3: palette 0
-    ldx #$08
-@a0:
-    lda #$00
+    ldx #$00
+@attr_loop:
+    lda attr_reveal, x
     sta PPUDATA
-    dex
-    bne @a0
-    ; Row 4-7 (hands top): palette 1 left, palette 2 right
-    ldx #$08
-@a1:
-    lda #$A0           ; bottom-left=pal2, top-left=pal1 (approx)
-    sta PPUDATA
-    dex
-    bne @a1
-    ; Row 8-11 (hands bottom + names): same
-    ldx #$08
-@a2:
-    lda #$A0
-    sta PPUDATA
-    dex
-    bne @a2
-    ; Row 12-15: palette 0
-    ldx #$08
-@a3:
-    lda #$00
-    sta PPUDATA
-    dex
-    bne @a3
-    ; Row 16-19 (result): palette 3
-    ldx #$08
-@a4:
-    lda #$FF
-    sta PPUDATA
-    dex
-    bne @a4
-    ; Row 20-23 (score): palette 3
-    ldx #$08
-@a5:
-    lda #$FF
-    sta PPUDATA
-    dex
-    bne @a5
-    ; Remaining
-    ldx #$10
-@a6:
-    lda #$00
-    sta PPUDATA
-    dex
-    bne @a6
+    inx
+    cpx #$40
+    bne @attr_loop
 
-    ; Set state to RESULT for input handling
+    ; Set state to RESULT
     lda #STATE_RESULT
     sta game_state
 
@@ -1699,11 +1780,61 @@ palette_data:
     rts
 .endproc
 
-;; Lookup tables for hand tiles
-hand_tile_tl: .byte TILE_ROCK_TL, TILE_SCIS_TL, TILE_PAPER_TL
-hand_tile_tr: .byte TILE_ROCK_TR, TILE_SCIS_TR, TILE_PAPER_TR
-hand_tile_bl: .byte TILE_ROCK_BL, TILE_SCIS_BL, TILE_PAPER_BL
-hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
+;; Helper: write player choice name to PPU (address already set)
+.proc write_player_name
+    ldx player_choice
+    cpx #$00
+    beq @rock
+    cpx #$01
+    beq @scis
+    lda #TILE_PA
+    sta PPUDATA
+    lda #TILE_CHOU
+    sta PPUDATA
+    rts
+@rock:
+    lda #TILE_GU
+    sta PPUDATA
+    lda #TILE_CHOU
+    sta PPUDATA
+    rts
+@scis:
+    lda #TILE_CHI
+    sta PPUDATA
+    lda #TILE_SYO
+    sta PPUDATA
+    lda #TILE_KI
+    sta PPUDATA
+    rts
+.endproc
+
+;; Helper: write CPU choice name to PPU (address already set)
+.proc write_cpu_name
+    ldx cpu_choice
+    cpx #$00
+    beq @rock
+    cpx #$01
+    beq @scis
+    lda #TILE_PA
+    sta PPUDATA
+    lda #TILE_CHOU
+    sta PPUDATA
+    rts
+@rock:
+    lda #TILE_GU
+    sta PPUDATA
+    lda #TILE_CHOU
+    sta PPUDATA
+    rts
+@scis:
+    lda #TILE_CHI
+    sta PPUDATA
+    lda #TILE_SYO
+    sta PPUDATA
+    lda #TILE_KI
+    sta PPUDATA
+    rts
+.endproc
 
 ;; ============================================================
 ;; REVEAL SCREEN update (animation phase)
