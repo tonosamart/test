@@ -245,7 +245,10 @@ TILE_VS      = $59
     ; Draw title screen
     jsr draw_title_screen
 
-    ; Enable NMI and rendering
+    ; Reset scroll and enable NMI and rendering
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
     lda #%10000000       ; NMI on, BG pattern table 0
     sta PPUCTRL
     lda #%00001110       ; show BG, no clipping
@@ -643,22 +646,25 @@ palette_data:
     pha
 
     ; Calculate nametable address for this row
-    ; Row X: addr = $2000 + X*32
-    ; $2000 + X*32 = $2000 + X*$20
-    lda #$20
+    ; Row X: addr = $2000 + X*32 + 2
+    ; Split: high byte = $20 + (X >> 3), low byte = (X & 7) * 32 + 2
+    txa
+    lsr a
+    lsr a
+    lsr a             ; A = X >> 3 (0-3)
+    clc
+    adc #$20          ; high byte
     sta temp+3
     txa
+    and #$07          ; A = X & 7
     asl a             ; *2
     asl a             ; *4
     asl a             ; *8
     asl a             ; *16
-    asl a             ; *32
+    asl a             ; *32 (max 7*32=224, no overflow)
     clc
-    adc #$02
+    adc #$02          ; column offset
     sta temp+2
-    lda temp+3
-    adc #$00
-    sta temp+3
 
     ; Left border
     lda temp+3
@@ -920,7 +926,10 @@ palette_data:
     dex
     bne @attr_row7
 
-    ; Re-enable rendering
+    ; Reset scroll after PPUADDR writes, then re-enable rendering
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
     lda #%00001110
     sta PPUMASK
     rts
@@ -1164,7 +1173,10 @@ palette_data:
     dex
     bne @attr_fill
 
-    ; Re-enable rendering
+    ; Reset scroll after PPUADDR writes, then re-enable rendering
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
     lda #%00001110
     sta PPUMASK
     rts
@@ -1210,22 +1222,12 @@ palette_data:
     lda #$01
     jsr play_sfx         ; confirm sound
 
-    ; Generate CPU choice
+    ; Generate CPU choice (uniform 0-2 via rejection sampling)
+@gen_cpu:
     jsr random
-    ; Simple modulo 3: keep subtracting 3
-    and #$07             ; 0-7
-@mod3:
+    and #$03             ; 0-3
     cmp #$03
-    bcc @mod3_done
-    sec
-    sbc #$03
-    jmp @mod3
-@mod3_done:
-    ; If result is still >= 3 (shouldn't be), force 0
-    cmp #$03
-    bcc @store_cpu
-    lda #$00
-@store_cpu:
+    beq @gen_cpu          ; reject 3, retry (25% chance)
     sta cpu_choice
 
     ; Transition to reveal
@@ -1524,6 +1526,10 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
     lda #STATE_RESULT
     sta game_state
 
+    ; Reset scroll after PPUADDR writes, then re-enable rendering
+    lda #$00
+    sta PPUSCROLL
+    sta PPUSCROLL
     lda #%00001110
     sta PPUMASK
     rts
@@ -1550,12 +1556,12 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
     lda #$01
     jsr play_sfx         ; confirm sound
 
-    ; Check if score reached 9 - reset
+    ; Check if either score reached 9 - reset game
     lda player_score
-    cmp #$0A
+    cmp #$09
     bcs @reset_score
     lda cpu_score
-    cmp #$0A
+    cmp #$09
     bcs @reset_score
     jmp @go_select
 
