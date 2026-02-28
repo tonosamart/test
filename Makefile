@@ -11,14 +11,14 @@ CFG = nes.cfg
 
 all: $(ROM)
 
-$(CHR): gen_chr.py
+$(CHR) cg_map.bin cg_attr.bin: gen_chr.py
 	python3 gen_chr.py
 
-$(OBJ): $(SRC) $(CHR)
+$(OBJ): $(SRC) $(CHR) cg_map.bin cg_attr.bin
 	ca65 $(SRC) -o $(OBJ)
 
 $(ROM): $(OBJ) $(CFG)
 	ld65 -C $(CFG) $(OBJ) -o $(ROM)
 
 clean:
-	rm -f $(OBJ) $(ROM) $(CHR)
+	rm -f $(OBJ) $(ROM) $(CHR) cg_map.bin cg_attr.bin

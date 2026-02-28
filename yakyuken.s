@@ -164,39 +164,6 @@ TILE_PAPER_TR = $49
 TILE_PAPER_BL = $4A
 TILE_PAPER_BR = $4B
 
-; Character CG tiles
-TILE_P_TOP0  = $60    ; player top-left
-TILE_P_TOP1  = $61
-TILE_P_TOP2  = $62
-TILE_P_HEYE0 = $63   ; player happy eyes
-TILE_P_HEYE1 = $64
-TILE_P_HEYE2 = $65
-TILE_P_HMTH0 = $66   ; player happy mouth
-TILE_P_HMTH1 = $67
-TILE_P_HMTH2 = $68
-TILE_P_SEYE0 = $69   ; player sad eyes
-TILE_P_SEYE1 = $6A
-TILE_P_SEYE2 = $6B
-TILE_P_SMTH0 = $6C   ; player sad mouth
-TILE_P_SMTH1 = $6D
-TILE_P_SMTH2 = $6E
-
-TILE_C_TOP0  = $72    ; CPU top-left
-TILE_C_TOP1  = $73
-TILE_C_TOP2  = $74
-TILE_C_HEYE0 = $75   ; CPU happy eyes
-TILE_C_HEYE1 = $76
-TILE_C_HEYE2 = $77
-TILE_C_HMTH0 = $78   ; CPU happy mouth
-TILE_C_HMTH1 = $79
-TILE_C_HMTH2 = $7A
-TILE_C_SEYE0 = $7B   ; CPU sad eyes
-TILE_C_SEYE1 = $7C
-TILE_C_SEYE2 = $7D
-TILE_C_SMTH0 = $7E   ; CPU sad mouth
-TILE_C_SMTH1 = $7F
-TILE_C_SMTH2 = $80
-
 TILE_HLINE_T = $50
 TILE_HLINE_B = $51
 TILE_VLINE_L = $52
@@ -1338,106 +1305,6 @@ palette_data:
     rts
 .endproc
 
-;; ============================================================
-;; Draw a 3x3 tile face
-;; temp+0/+1 = pointer to 9-byte tile index table
-;; temp+2/+3 = PPU address (low/high)
-;; ============================================================
-.proc draw_face
-    ; Row 0 (tiles 0,1,2)
-    lda temp+3
-    sta PPUADDR
-    lda temp+2
-    sta PPUADDR
-    ldy #$00
-    lda (temp), y
-    sta PPUDATA
-    iny
-    lda (temp), y
-    sta PPUDATA
-    iny
-    lda (temp), y
-    sta PPUDATA
-
-    ; Advance to next nametable row (+32)
-    lda temp+2
-    clc
-    adc #$20
-    sta temp+2
-    lda temp+3
-    adc #$00
-    sta temp+3
-
-    ; Row 1 (tiles 3,4,5)
-    lda temp+3
-    sta PPUADDR
-    lda temp+2
-    sta PPUADDR
-    iny
-    lda (temp), y
-    sta PPUDATA
-    iny
-    lda (temp), y
-    sta PPUDATA
-    iny
-    lda (temp), y
-    sta PPUDATA
-
-    ; Advance to next row
-    lda temp+2
-    clc
-    adc #$20
-    sta temp+2
-    lda temp+3
-    adc #$00
-    sta temp+3
-
-    ; Row 2 (tiles 6,7,8)
-    lda temp+3
-    sta PPUADDR
-    lda temp+2
-    sta PPUADDR
-    iny
-    lda (temp), y
-    sta PPUDATA
-    iny
-    lda (temp), y
-    sta PPUDATA
-    iny
-    lda (temp), y
-    sta PPUDATA
-    rts
-.endproc
-
-;; Face tile lookup tables (9 tiles each: top/eyes/mouth rows)
-player_face_happy:
-    .byte TILE_P_TOP0, TILE_P_TOP1, TILE_P_TOP2
-    .byte TILE_P_HEYE0, TILE_P_HEYE1, TILE_P_HEYE2
-    .byte TILE_P_HMTH0, TILE_P_HMTH1, TILE_P_HMTH2
-player_face_sad:
-    .byte TILE_P_TOP0, TILE_P_TOP1, TILE_P_TOP2
-    .byte TILE_P_SEYE0, TILE_P_SEYE1, TILE_P_SEYE2
-    .byte TILE_P_SMTH0, TILE_P_SMTH1, TILE_P_SMTH2
-cpu_face_happy:
-    .byte TILE_C_TOP0, TILE_C_TOP1, TILE_C_TOP2
-    .byte TILE_C_HEYE0, TILE_C_HEYE1, TILE_C_HEYE2
-    .byte TILE_C_HMTH0, TILE_C_HMTH1, TILE_C_HMTH2
-cpu_face_sad:
-    .byte TILE_C_TOP0, TILE_C_TOP1, TILE_C_TOP2
-    .byte TILE_C_SEYE0, TILE_C_SEYE1, TILE_C_SEYE2
-    .byte TILE_C_SMTH0, TILE_C_SMTH1, TILE_C_SMTH2
-
-;; Attribute table for reveal screen (64 bytes)
-attr_reveal:
-    .byte $00,$55,$00,$00,$00,$00,$AA,$00  ; row 0 (tiles 0-3): labels
-    .byte $00,$55,$00,$00,$00,$00,$AA,$00  ; row 1 (tiles 4-7): faces
-    .byte $00,$55,$00,$00,$00,$00,$AA,$00  ; row 2 (tiles 8-11): hands+names
-    .byte $00,$00,$F0,$F0,$F0,$F0,$00,$00  ; row 3 (tiles 12-15): result text
-    .byte $00,$00,$00,$00,$00,$00,$00,$00  ; row 4 (tiles 16-19): score
-    .byte $00,$00,$00,$F0,$F0,$00,$00,$00  ; row 5 (tiles 20-23): PRESS A
-    .byte $00,$00,$00,$00,$00,$00,$00,$00  ; row 6
-    .byte $00,$00,$00,$00,$00,$00,$00,$00  ; row 7
-
 ;; Lookup tables for hand tiles
 hand_tile_tl: .byte TILE_ROCK_TL, TILE_SCIS_TL, TILE_PAPER_TL
 hand_tile_tr: .byte TILE_ROCK_TR, TILE_SCIS_TR, TILE_PAPER_TR
@@ -1445,14 +1312,13 @@ hand_tile_bl: .byte TILE_ROCK_BL, TILE_SCIS_BL, TILE_PAPER_BL
 hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
 
 ;; ============================================================
-;; REVEAL SCREEN - draw (with character CG)
+;; REVEAL SCREEN - draw (full-screen CG portrait)
 ;; ============================================================
 .proc draw_reveal_screen
     lda #$00
     sta PPUMASK
-    jsr clear_nametable
 
-    ; --- Determine result first (for face expressions) ---
+    ; --- Determine result ---
     lda player_choice
     cmp cpu_choice
     beq @is_draw
@@ -1491,137 +1357,40 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
     inc cpu_score
 
 @begin_draw:
-    ; --- "YOU" at row 2, col 5 ---
+    ; --- Load full-screen CG nametable (960 bytes) ---
     lda #$20
     sta PPUADDR
-    lda #$45
+    lda #$00
     sta PPUADDR
-    lda #TILE_Y
-    sta PPUDATA
-    lda #TILE_O
-    sta PPUDATA
-    lda #TILE_U
-    sta PPUDATA
 
-    ; "VS" at row 2, col 15
-    lda #$20
-    sta PPUADDR
-    lda #$4F
-    sta PPUADDR
-    lda #TILE_V
-    sta PPUDATA
-    lda #TILE_S
-    sta PPUDATA
-
-    ; "CPU" at row 2, col 24
-    lda #$20
-    sta PPUADDR
-    lda #$58
-    sta PPUADDR
-    lda #TILE_C
-    sta PPUDATA
-    lda #TILE_P
-    sta PPUDATA
-    lda #TILE_U
-    sta PPUDATA
-
-    ; --- Draw player face CG at row 4, col 4 ---
-    lda result
-    cmp #$02
-    beq @p_sad
-    lda #<player_face_happy
+    lda #<cg_map_data
     sta temp
-    lda #>player_face_happy
+    lda #>cg_map_data
     sta temp+1
-    jmp @do_p_face
-@p_sad:
-    lda #<player_face_sad
-    sta temp
-    lda #>player_face_sad
-    sta temp+1
-@do_p_face:
-    lda #$84              ; row 4, col 4
-    sta temp+2
-    lda #$20
-    sta temp+3
-    jsr draw_face
 
-    ; --- Draw CPU face CG at row 4, col 24 ---
-    lda result
-    cmp #$01
-    beq @c_sad
-    lda #<cpu_face_happy
-    sta temp
-    lda #>cpu_face_happy
-    sta temp+1
-    jmp @do_c_face
-@c_sad:
-    lda #<cpu_face_sad
-    sta temp
-    lda #>cpu_face_sad
-    sta temp+1
-@do_c_face:
-    lda #$98              ; row 4, col 24
-    sta temp+2
-    lda #$20
-    sta temp+3
-    jsr draw_face
+    ; Copy 3 full pages (768 bytes)
+    ldx #$03
+    ldy #$00
+@page_loop:
+    lda (temp), y
+    sta PPUDATA
+    iny
+    bne @page_loop
+    inc temp+1
+    dex
+    bne @page_loop
 
-    ; --- Player hand at row 8, col 4 ---
-    lda #$21
-    sta PPUADDR
-    lda #$04
-    sta PPUADDR
-    ldx player_choice
-    lda hand_tile_tl, x
+    ; Copy remaining 192 bytes (960 - 768)
+    ldy #$00
+@last_loop:
+    lda (temp), y
     sta PPUDATA
-    lda hand_tile_tr, x
-    sta PPUDATA
-    lda #$21
-    sta PPUADDR
-    lda #$24
-    sta PPUADDR
-    ldx player_choice
-    lda hand_tile_bl, x
-    sta PPUDATA
-    lda hand_tile_br, x
-    sta PPUDATA
+    iny
+    cpy #$C0
+    bne @last_loop
 
-    ; --- CPU hand at row 8, col 24 ---
-    lda #$21
-    sta PPUADDR
-    lda #$18
-    sta PPUADDR
-    ldx cpu_choice
-    lda hand_tile_tl, x
-    sta PPUDATA
-    lda hand_tile_tr, x
-    sta PPUDATA
-    lda #$21
-    sta PPUADDR
-    lda #$38
-    sta PPUADDR
-    ldx cpu_choice
-    lda hand_tile_bl, x
-    sta PPUDATA
-    lda hand_tile_br, x
-    sta PPUDATA
-
-    ; --- Player choice name at row 11, col 4 ---
-    lda #$21
-    sta PPUADDR
-    lda #$64
-    sta PPUADDR
-    jsr write_player_name
-
-    ; --- CPU choice name at row 11, col 24 ---
-    lda #$21
-    sta PPUADDR
-    lda #$78
-    sta PPUADDR
-    jsr write_cpu_name
-
-    ; --- Result text at row 14 ---
+    ; --- Overlay text on bottom rows ---
+    ; Row 27: result text (centered)
     lda result
     cmp #$00
     bne @not_draw_txt
@@ -1631,10 +1400,10 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
     bne @txt_lose
     jmp @txt_win
 @txt_lose:
-    ; "YOU LOSE..." at row 14, col 10
-    lda #$21
+    ; "YOU LOSE..." at row 27, col 10 = $2000 + 27*32 + 10 = $2000 + $36A
+    lda #$23
     sta PPUADDR
-    lda #$CA
+    lda #$6A
     sta PPUADDR
     lda #TILE_Y
     sta PPUDATA
@@ -1663,10 +1432,10 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
     jmp @draw_score
 
 @txt_win:
-    ; "YOU WIN!" at row 14, col 11
-    lda #$21
+    ; "YOU WIN!" at row 27, col 12 = $236C
+    lda #$23
     sta PPUADDR
-    lda #$CB
+    lda #$6C
     sta PPUADDR
     lda #TILE_Y
     sta PPUDATA
@@ -1689,10 +1458,10 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
     jmp @draw_score
 
 @txt_draw:
-    ; "DRAW" at row 14, col 13
-    lda #$21
+    ; "DRAW" at row 27, col 14 = $236E
+    lda #$23
     sta PPUADDR
-    lda #$CD
+    lda #$6E
     sta PPUADDR
     lda #TILE_D
     sta PPUDATA
@@ -1706,10 +1475,10 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
     jsr play_sfx
 
 @draw_score:
-    ; Score at row 17, col 8
-    lda #$22
+    ; Score at row 28, col 8 = $2000 + 28*32 + 8 = $2388
+    lda #$23
     sta PPUADDR
-    lda #$28
+    lda #$88
     sta PPUADDR
     lda #TILE_P
     sta PPUDATA
@@ -1738,34 +1507,14 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
     adc #TILE_0
     sta PPUDATA
 
-    ; "PRESS A" at row 22, col 12
-    lda #$22
-    sta PPUADDR
-    lda #$CC
-    sta PPUADDR
-    lda #TILE_P
-    sta PPUDATA
-    lda #TILE_R
-    sta PPUDATA
-    lda #TILE_E
-    sta PPUDATA
-    lda #TILE_S
-    sta PPUDATA
-    lda #TILE_S
-    sta PPUDATA
-    lda #TILE_BLANK
-    sta PPUDATA
-    lda #TILE_A
-    sta PPUDATA
-
-    ; --- Set attributes from table ---
+    ; --- Load CG attribute table (64 bytes) ---
     lda #$23
     sta PPUADDR
     lda #$C0
     sta PPUADDR
     ldx #$00
 @attr_loop:
-    lda attr_reveal, x
+    lda cg_attr_data, x
     sta PPUDATA
     inx
     cpx #$40
@@ -1777,62 +1526,6 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
 
     lda #%00001110
     sta PPUMASK
-    rts
-.endproc
-
-;; Helper: write player choice name to PPU (address already set)
-.proc write_player_name
-    ldx player_choice
-    cpx #$00
-    beq @rock
-    cpx #$01
-    beq @scis
-    lda #TILE_PA
-    sta PPUDATA
-    lda #TILE_CHOU
-    sta PPUDATA
-    rts
-@rock:
-    lda #TILE_GU
-    sta PPUDATA
-    lda #TILE_CHOU
-    sta PPUDATA
-    rts
-@scis:
-    lda #TILE_CHI
-    sta PPUDATA
-    lda #TILE_SYO
-    sta PPUDATA
-    lda #TILE_KI
-    sta PPUDATA
-    rts
-.endproc
-
-;; Helper: write CPU choice name to PPU (address already set)
-.proc write_cpu_name
-    ldx cpu_choice
-    cpx #$00
-    beq @rock
-    cpx #$01
-    beq @scis
-    lda #TILE_PA
-    sta PPUDATA
-    lda #TILE_CHOU
-    sta PPUDATA
-    rts
-@rock:
-    lda #TILE_GU
-    sta PPUDATA
-    lda #TILE_CHOU
-    sta PPUDATA
-    rts
-@scis:
-    lda #TILE_CHI
-    sta PPUDATA
-    lda #TILE_SYO
-    sta PPUDATA
-    lda #TILE_KI
-    sta PPUDATA
     rts
 .endproc
 
@@ -1880,6 +1573,17 @@ hand_tile_br: .byte TILE_ROCK_BR, TILE_SCIS_BR, TILE_PAPER_BR
 @done:
     rts
 .endproc
+
+;; ============================================================
+;; CG Portrait Data (in RODATA segment)
+;; ============================================================
+.segment "RODATA"
+
+cg_map_data:
+    .incbin "cg_map.bin"        ; 960 bytes: full nametable for CG screen
+
+cg_attr_data:
+    .incbin "cg_attr.bin"       ; 64 bytes: attribute table for CG screen
 
 ;; ============================================================
 ;; Interrupt Vectors
